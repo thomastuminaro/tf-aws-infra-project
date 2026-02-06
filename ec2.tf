@@ -38,7 +38,9 @@ resource "aws_launch_template" "server" {
     })
   }
 
-  user_data = filebase64("${path.module}/initial_setup.sh")
+  user_data = base64encode(templatefile("${path.module}/initial_setup.sh", {
+    bucket_name = var.s3
+  }))
 }
 
 resource "aws_instance" "servers" {
@@ -52,5 +54,10 @@ resource "aws_instance" "servers" {
     volume_type = "gp3"
   }
 
-  depends_on = [ aws_launch_template.server ]
+  depends_on = [ aws_launch_template.server, 
+                 aws_vpc_security_group_ingress_rule.console, 
+                 aws_vpc_security_group_egress_rule.egress, 
+                 aws_vpc_security_group_ingress_rule.ingress,
+                 aws_s3_object.app ]
 }
+

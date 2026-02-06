@@ -1,7 +1,7 @@
 # VPC specific local block 
 locals {
   public_subnet_name = join(",", [for key, value in var.subnets : key if value.enable_public == true])
-  sg_rules = flatten([
+ /*  sg_rules = flatten([
     for sg_name, sg_config in var.security_groups : [
       for port in sg_config.sg_ports : [
         for cidr in sg_config.sg_cidr_ipv4 : {
@@ -10,6 +10,28 @@ locals {
           cidr    = cidr
         }
       ]
+    ]
+  ]) */
+
+  sg_ingress_rules = flatten([
+    for sg_name, sg_config in var.security_groups : [
+      for ingress_rule in sg_config.sg_ingress_rules : {
+          sg_name = sg_name
+          port_from    = ingress_rule.ingress_port_from
+          cidr    = ingress_rule.ingress_cidr
+          port_to = ingress_rule.ingress_port_to
+        } 
+    ]
+  ])
+
+  sg_egress_rules = flatten([
+    for sg_name, sg_config in var.security_groups : [
+      for egress_rule in sg_config.sg_egress_rules : {
+          sg_name = sg_name
+          port_from    = egress_rule.egress_port_from
+          cidr    = egress_rule.egress_cidr
+          port_to = egress_rule.egress_port_to
+        } 
     ]
   ])
 }
@@ -75,17 +97,31 @@ resource "aws_security_group" "groups" {
   })
 }
 
+# Grabbing prefix list of AWS console for EC2 connect
+data "aws_ec2_managed_prefix_list" "console" {
+  name = "com.amazonaws.eu-west-3.ec2-instance-connect"
+}
+
+# Adding a custom security group ingress rule to enable traffic from the web console
+resource "aws_vpc_security_group_ingress_rule" "console" {
+  for_each = aws_security_group.groups
+  security_group_id = aws_security_group.groups[each.key].id
+  ip_protocol = -1
+  prefix_list_id = data.aws_ec2_managed_prefix_list.console.id
+
+}
+
 # Creating ingress rules for all security groups 
 resource "aws_vpc_security_group_ingress_rule" "ingress" {
-  count             = length(local.sg_rules)
-  security_group_id = aws_security_group.groups[local.sg_rules[count.index].sg_name].id
+  count             = length(local.sg_ingress_rules)
+  security_group_id = aws_security_group.groups[local.sg_ingress_rules[count.index].sg_name].id
   ip_protocol       = "tcp"
-  from_port         = local.sg_rules[count.index].port
-  to_port           = local.sg_rules[count.index].port
-  cidr_ipv4         = local.sg_rules[count.index].cidr
+  from_port         = local.sg_ingress_rules[count.index].port_from
+  to_port           = local.sg_ingress_rules[count.index].port_to
+  cidr_ipv4         = local.sg_ingress_rules[count.index].cidr
 
   tags = merge(var.common_tags, {
-    Name = "Ingress-port-${local.sg_rules[count.index].port}-${local.sg_rules[count.index].cidr}"
+    Name = "Ingress-port-${local.sg_ingress_rules[count.index].port_from}:${local.sg_ingress_rules[count.index].port_to}-${local.sg_ingress_rules[count.index].cidr}"
   })
 
   depends_on = [aws_security_group.groups]
@@ -93,15 +129,15 @@ resource "aws_vpc_security_group_ingress_rule" "ingress" {
 
 # Creating egress rules for all security groups 
 resource "aws_vpc_security_group_egress_rule" "egress" {
-  count             = length(local.sg_rules)
-  security_group_id = aws_security_group.groups[local.sg_rules[count.index].sg_name].id
+  count             = length(local.sg_egress_rules)
+  security_group_id = aws_security_group.groups[local.sg_egress_rules[count.index].sg_name].id
   ip_protocol       = "tcp"
-  from_port         = local.sg_rules[count.index].port
-  to_port           = local.sg_rules[count.index].port
-  cidr_ipv4         = local.sg_rules[count.index].cidr
+  from_port         = local.sg_egress_rules[count.index].port_from
+  to_port           = local.sg_egress_rules[count.index].port_to
+  cidr_ipv4         = local.sg_egress_rules[count.index].cidr
 
   tags = merge(var.common_tags, {
-    Name = "Egress-port-${local.sg_rules[count.index].port}-${local.sg_rules[count.index].cidr}"
+    Name = "Egress-port-${local.sg_egress_rules[count.index].port_from}:${local.sg_egress_rules[count.index].port_to}-${local.sg_egress_rules[count.index].cidr}"
   })
 
   depends_on = [aws_security_group.groups]

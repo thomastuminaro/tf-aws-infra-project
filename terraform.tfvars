@@ -16,13 +16,52 @@ subnets = {
 security_groups = {
   "tf-aws-infra-project-sg-ec2" = {
     sg_description = "Security group for EC2 instances, allows only traffic to DBs and Web - will need to check for LB."
-    sg_cidr_ipv4   = ["10.0.20.0/24", "10.0.30.0/24"]
-    sg_ports       = ["80", "22"]
-  },
+    sg_ingress_rules = {
+      "traffic-from-vpc-all" = {
+        ingress_cidr = "10.0.0.0/16"
+        ingress_port_from = 0
+        ingress_port_to = 65535
+      },
+      "traffic-from-http-all" = {
+        ingress_cidr = "0.0.0.0/0"
+        ingress_port_from = 80
+        ingress_port_to = 80
+      }
+    }
+    sg_egress_rules = {
+      "traffic-to-vpc-all" = {
+        egress_cidr = "10.0.0.0/16"
+        egress_port_from = 0
+        egress_port_to = 65535
+      },
+      "traffic-to-https-all" = {
+        egress_cidr = "0.0.0.0/0"
+        egress_port_from = 443
+        egress_port_to = 443
+      },
+      "traffic-to-http-all" = {
+        egress_cidr = "0.0.0.0/0"
+        egress_port_from = 80
+        egress_port_to = 80
+      }
+    }
+    },
   "tf-aws-infra-project-sg-db" = {
     sg_description = "Security group for DB instances, allows only traffic EC2 and to other DBs."
-    sg_cidr_ipv4   = ["10.0.20.0/24", "10.0.30.0/24"]
-    sg_ports       = ["3306"]
+    sg_ingress_rules = {
+      "traffic-from-vpc-all" = {
+        ingress_cidr = "10.0.0.0/16"
+        ingress_port_from = 3306
+        ingress_port_to = 3306
+      }
+    }
+    sg_egress_rules = {
+      "traffic-to-vpc-all" = {
+        egress_cidr = "10.0.0.0/16"
+        egress_port_from = 0
+        egress_port_to = 65535
+      }
+    }
   }
 }
 
