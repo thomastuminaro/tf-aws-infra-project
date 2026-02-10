@@ -38,9 +38,11 @@ resource "aws_launch_template" "server" {
     })
   }
 
-  user_data = base64encode(templatefile("${path.module}/initial_setup.sh", {
+  /* user_data = base64encode(templatefile("${path.module}/initial_setup.sh", {
     bucket_name = var.s3
-  }))
+  })) */
+
+  user_data = filebase64("${path.module}/initial_setup.sh")
 }
 
 resource "aws_instance" "servers" {
