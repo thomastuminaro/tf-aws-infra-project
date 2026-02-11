@@ -1,6 +1,10 @@
 subnets = {
-  "tf-aws-infra-project-subnet-public" = {
+  "tf-aws-infra-project-subnet-public-1" = {
     subnet_cidr_block = "10.0.10.0/24"
+    enable_public     = true
+  },
+  "tf-aws-infra-project-subnet-public-2" = {
+    subnet_cidr_block = "10.0.11.0/24"
     enable_public     = true
   },
   "tf-aws-infra-project-subnet-private-ec2" = {
@@ -70,10 +74,10 @@ s3 = "tf-aws-infra-project-bucket"
 ec2_instance = {
   "tf-aws-infra-project-server1" = {
     ec2_type   = "t3.micro"
-    ec2_subnet = "tf-aws-infra-project-subnet-public"
-  }/* ,
+    ec2_subnet = "tf-aws-infra-project-subnet-private-ec2"
+  },
   "tf-aws-infra-project-server2" = {
     ec2_type   = "t3.micro"
     ec2_subnet = "tf-aws-infra-project-subnet-private-ec2"
-  } */
+  }
 }

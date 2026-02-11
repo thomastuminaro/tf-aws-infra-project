@@ -1,7 +1,3 @@
 output "test" {
-  value = local.sg_ingress_rules
-}
-
-output "test2" {
-  value = local.sg_egress_rules
+  value = index([for k in keys(local.public_subnets) : k], "tf-aws-infra-project-subnet-public-1")
 }

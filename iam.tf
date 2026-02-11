@@ -17,16 +17,16 @@ resource "aws_iam_policy" "ros3" {
     Version = "2012-10-17"
     Statement = [
       {
-        Action = [                 # https://docs.aws.amazon.com/service-authorization/latest/reference/list_amazons3.html#amazons3-actions-as-permissions 
-          "s3:GetObject",          # Retrieve objects from bucket
-          "s3:GetObjectVersion"   # Retrieve specific version of object 
+        Action = [              # https://docs.aws.amazon.com/service-authorization/latest/reference/list_amazons3.html#amazons3-actions-as-permissions 
+          "s3:GetObject",       # Retrieve objects from bucket
+          "s3:GetObjectVersion" # Retrieve specific version of object 
         ]
         Effect   = "Allow"
         Resource = "${aws_s3_bucket.bucket.arn}/*" # check more dynamic way
       },
       {
-        Action = [                 # https://docs.aws.amazon.com/service-authorization/latest/reference/list_amazons3.html#amazons3-actions-as-permissions 
-          "s3:ListBucket",         # List objects in the bucket 
+        Action = [                # https://docs.aws.amazon.com/service-authorization/latest/reference/list_amazons3.html#amazons3-actions-as-permissions 
+          "s3:ListBucket",        # List objects in the bucket 
           "s3:ListBucketVersions" # List versions of all objects in the bucket
         ]
         Effect   = "Allow"
@@ -35,7 +35,7 @@ resource "aws_iam_policy" "ros3" {
     ]
   })
 
-  depends_on = [ aws_instance.servers, aws_s3_bucket.bucket ]
+  depends_on = [aws_instance.servers, aws_s3_bucket.bucket]
 }
 
 # Creating the role 

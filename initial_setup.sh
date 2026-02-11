@@ -4,6 +4,7 @@
 AWS_DIR="/opt/aws"
 NGINX_DIR="/var/www/html/"
 BUCKET_NAME="${bucket_name}"
+HOSTNAME="$(hostname)"
 
 # Required packages 
 
@@ -27,5 +28,6 @@ $AWS_DIR/aws/install
 
 # Downloading required files 
 
-#aws s3 cp s3://$BUCKET_NAME/index.html $NGINX_DIR/index.html
-/usr/local/bin/aws s3 cp s3://tf-aws-infra-project-bucket/index.html $NGINX_DIR/index.html
+/usr/local/bin/aws s3 cp s3://$BUCKET_NAME/index.html $NGINX_DIR/index.html
+echo $HOSTNAME >> $NGINX_DIR/index.html
+#/usr/local/bin/aws s3 cp s3://tf-aws-infra-project-bucket/index.html $NGINX_DIR/index.html

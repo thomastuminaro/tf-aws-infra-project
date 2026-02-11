@@ -1,0 +1,15 @@
+1/ Create network interface and attachment so that EC2 has two interface, one public and one private, so possible to test access to WEB 
+=> only for testing, when all works, only one interface private should be used 
+2/ Redesign solution and variables 
+=> Should be possible on 2 or 3 AZs 
+=> Should be a mapping like : subnet - instance - AZ for each existing instance ex if 4 web servers 
+
+web1 - subnet1 - az1 
+web2 - subnet2 - az2 
+web3 - subnet3 - az3 
+web4 - subnet1 - az1 
+etc 
+=> should be dynamic 
+
+3/ Reconfigure subnets, EC2 etc depending on design above 
+4/ Add listenner configuration to the LB

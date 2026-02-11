@@ -59,13 +59,13 @@ variable "subnets" {
   }
 
   validation {
-    condition     = length([for k, v in var.subnets : k if v.enable_public == true]) == 1
-    error_message = "You must configure one public subnet, no more, no less."
+    condition     = length([for k, v in var.subnets : k if v.enable_public == false]) == 2
+    error_message = "You must configure two private subnets, no more, no less."
   }
 
   validation {
-    condition     = length([for k, v in var.subnets : k if v.enable_public == false]) == 2
-    error_message = "You must configure two private subnets, no more, no less."
+    condition     = length([for sub in var.subnets : sub if sub.enable_public]) == 2
+    error_message = "You need to configure exactly two public subnets, use the enable_public option."
   }
 }
 
@@ -74,15 +74,15 @@ variable "security_groups" {
     sg_description = string
 
     sg_ingress_rules = map(object({
-      ingress_cidr = string
+      ingress_cidr      = string
       ingress_port_from = number
-      ingress_port_to = number
+      ingress_port_to   = number
     }))
 
     sg_egress_rules = map(object({
-      egress_cidr = string
+      egress_cidr      = string
       egress_port_from = number
-      egress_port_to = number
+      egress_port_to   = number
     }))
   }))
 
@@ -92,34 +92,34 @@ variable "security_groups" {
   }
 
   validation {
-    condition = alltrue([ for group in var.security_groups : alltrue([ 
-                          for rule in group.sg_ingress_rules :
-                              can(cidrnetmask(rule.ingress_cidr)) ]) ])
+    condition = alltrue([for group in var.security_groups : alltrue([
+      for rule in group.sg_ingress_rules :
+    can(cidrnetmask(rule.ingress_cidr))])])
     error_message = "One of your security group ingress rule does not contain a valid CIDR."
   }
 
   validation {
-    condition = alltrue([ for group in var.security_groups : alltrue([
-                          for rule in group.sg_egress_rules :
-                          can(cidrnetmask(rule.egress_cidr)) ]) ])
+    condition = alltrue([for group in var.security_groups : alltrue([
+      for rule in group.sg_egress_rules :
+    can(cidrnetmask(rule.egress_cidr))])])
     error_message = "One of your security group egress rule does not contain a valid CIDR."
   }
 
   validation {
-    condition = alltrue([ for group in var.security_groups : alltrue([ 
-                          for rule in group.sg_ingress_rules :
-                          rule.ingress_port_from == floor(rule.ingress_port_from) 
-                          && rule.ingress_port_from >= 0 && rule.ingress_port_from <= 65535 && rule.ingress_port_to <= 65535 && rule.ingress_port_to >= 0 
-                          && rule.ingress_port_from <= rule.ingress_port_to ]) ])
+    condition = alltrue([for group in var.security_groups : alltrue([
+      for rule in group.sg_ingress_rules :
+      rule.ingress_port_from == floor(rule.ingress_port_from)
+      && rule.ingress_port_from >= 0 && rule.ingress_port_from <= 65535 && rule.ingress_port_to <= 65535 && rule.ingress_port_to >= 0
+    && rule.ingress_port_from <= rule.ingress_port_to])])
     error_message = "Please provide correct values for your ingress rule ports, between 0 and 65535, use same value if one port only. \nRange port_from:port_to."
   }
 
   validation {
-    condition = alltrue([ for group in var.security_groups : alltrue([
-                          for rule in group.sg_egress_rules :
-                          rule.egress_port_from == floor(rule.egress_port_from) 
-                          && rule.egress_port_from >= 0 && rule.egress_port_from <= 65535 && rule.egress_port_to <= 65535 && rule.egress_port_to >= 0 
-                          && rule.egress_port_from <= rule.egress_port_to ]) ])
+    condition = alltrue([for group in var.security_groups : alltrue([
+      for rule in group.sg_egress_rules :
+      rule.egress_port_from == floor(rule.egress_port_from)
+      && rule.egress_port_from >= 0 && rule.egress_port_from <= 65535 && rule.egress_port_to <= 65535 && rule.egress_port_to >= 0
+    && rule.egress_port_from <= rule.egress_port_to])])
     error_message = "Please provide correct values for your egress rule ports, between 0 and 65535, use same value if one port only. \nRange port_from:port_to"
   }
 }

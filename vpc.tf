@@ -1,37 +1,29 @@
 # VPC specific local block 
 locals {
   public_subnet_name = join(",", [for key, value in var.subnets : key if value.enable_public == true])
- /*  sg_rules = flatten([
-    for sg_name, sg_config in var.security_groups : [
-      for port in sg_config.sg_ports : [
-        for cidr in sg_config.sg_cidr_ipv4 : {
-          sg_name = sg_name
-          port    = port
-          cidr    = cidr
-        }
-      ]
-    ]
-  ]) */
+
+  public_subnets = { for k,v in var.subnets : k => v if v.enable_public }
+  private_subnets = { for k,v in var.subnets : k => v if ! v.enable_public }
 
   sg_ingress_rules = flatten([
     for sg_name, sg_config in var.security_groups : [
       for ingress_rule in sg_config.sg_ingress_rules : {
-          sg_name = sg_name
-          port_from    = ingress_rule.ingress_port_from
-          cidr    = ingress_rule.ingress_cidr
-          port_to = ingress_rule.ingress_port_to
-        } 
+        sg_name   = sg_name
+        port_from = ingress_rule.ingress_port_from
+        cidr      = ingress_rule.ingress_cidr
+        port_to   = ingress_rule.ingress_port_to
+      }
     ]
   ])
 
   sg_egress_rules = flatten([
     for sg_name, sg_config in var.security_groups : [
       for egress_rule in sg_config.sg_egress_rules : {
-          sg_name = sg_name
-          port_from    = egress_rule.egress_port_from
-          cidr    = egress_rule.egress_cidr
-          port_to = egress_rule.egress_port_to
-        } 
+        sg_name   = sg_name
+        port_from = egress_rule.egress_port_from
+        cidr      = egress_rule.egress_cidr
+        port_to   = egress_rule.egress_port_to
+      }
     ]
   ])
 }
@@ -45,12 +37,34 @@ resource "aws_vpc" "main" {
   })
 }
 
-# Creating subnets resource for the application 
-resource "aws_subnet" "this" {
-  for_each                = var.subnets
+# Grabbing available AZs for availability
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+# Creating public subnets resource for the LB 
+resource "aws_subnet" "public" {
+  for_each                = local.public_subnets
   vpc_id                  = aws_vpc.main.id
   cidr_block              = each.value.subnet_cidr_block
   map_public_ip_on_launch = each.value.enable_public
+  availability_zone = data.aws_availability_zones.available.names[ index([for k in keys(local.public_subnets) : k], each.key) 
+                                                                   % length(data.aws_availability_zones.available.names) ]
+  
+  tags = merge(var.common_tags, {
+    Name = "${each.key}"
+  })
+}
+
+# Creating private subnets resource for the applications 
+resource "aws_subnet" "private" {
+  for_each                = local.private_subnets
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = each.value.subnet_cidr_block
+  map_public_ip_on_launch = each.value.enable_public
+  #availability_zone = data.aws_availability_zones.available.names[ index([for k in keys(local.private_subnets) : k], each.key) 
+                                                                   #% length(data.aws_availability_zones.available.names) ]
+  availability_zone = "eu-west-3a"
 
   tags = merge(var.common_tags, {
     Name = "${each.key}"
@@ -82,7 +96,8 @@ resource "aws_route_table" "default" {
 
 # Associate public subnet to the internet route
 resource "aws_route_table_association" "internet" {
-  subnet_id      = aws_subnet.this[local.public_subnet_name].id
+  for_each = local.public_subnets
+  subnet_id      = aws_subnet.public[each.key].id
   route_table_id = aws_route_table.default.id
 }
 
@@ -104,10 +119,10 @@ data "aws_ec2_managed_prefix_list" "console" {
 
 # Adding a custom security group ingress rule to enable traffic from the web console
 resource "aws_vpc_security_group_ingress_rule" "console" {
-  for_each = aws_security_group.groups
+  for_each          = aws_security_group.groups
   security_group_id = aws_security_group.groups[each.key].id
-  ip_protocol = -1
-  prefix_list_id = data.aws_ec2_managed_prefix_list.console.id
+  ip_protocol       = -1
+  prefix_list_id    = data.aws_ec2_managed_prefix_list.console.id
 
 }
 
