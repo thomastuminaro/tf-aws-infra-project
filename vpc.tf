@@ -1,39 +1,9 @@
-# VPC specific local block 
-locals {
-  public_subnet_name = join(",", [for key, value in var.subnets : key if value.enable_public == true])
-
-  public_subnets = { for k,v in var.subnets : k => v if v.enable_public }
-  private_subnets = { for k,v in var.subnets : k => v if ! v.enable_public }
-
-  sg_ingress_rules = flatten([
-    for sg_name, sg_config in var.security_groups : [
-      for ingress_rule in sg_config.sg_ingress_rules : {
-        sg_name   = sg_name
-        port_from = ingress_rule.ingress_port_from
-        cidr      = ingress_rule.ingress_cidr
-        port_to   = ingress_rule.ingress_port_to
-      }
-    ]
-  ])
-
-  sg_egress_rules = flatten([
-    for sg_name, sg_config in var.security_groups : [
-      for egress_rule in sg_config.sg_egress_rules : {
-        sg_name   = sg_name
-        port_from = egress_rule.egress_port_from
-        cidr      = egress_rule.egress_cidr
-        port_to   = egress_rule.egress_port_to
-      }
-    ]
-  ])
-}
-
 # Creating the main VPC resource for the application 
 resource "aws_vpc" "main" {
   cidr_block = var.vpc.vpc_cidr_block
 
   tags = merge(var.common_tags, {
-    Name = var.vpc.vpc_name
+    Name = "${var.common_tags.Project}-${var.vpc.vpc_name}"
   })
 }
 
@@ -48,26 +18,40 @@ resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = each.value.subnet_cidr_block
   map_public_ip_on_launch = each.value.enable_public
-  availability_zone = data.aws_availability_zones.available.names[ index([for k in keys(local.public_subnets) : k], each.key) 
-                                                                   % length(data.aws_availability_zones.available.names) ]
-  
+  availability_zone = data.aws_availability_zones.available.names[index([for k in keys(local.public_subnets) : k], each.key)
+                                                                  % length(data.aws_availability_zones.available.names)]
+
   tags = merge(var.common_tags, {
     Name = "${each.key}"
+    Public = "TRUE"
   })
 }
 
-# Creating private subnets resource for the applications 
-resource "aws_subnet" "private" {
-  for_each                = local.private_subnets
+# Creating private subnets resource for the EC2 instances 
+resource "aws_subnet" "private_ec2" {
+  for_each                = local.ec2_subnets
   vpc_id                  = aws_vpc.main.id
   cidr_block              = each.value.subnet_cidr_block
   map_public_ip_on_launch = each.value.enable_public
-  #availability_zone = data.aws_availability_zones.available.names[ index([for k in keys(local.private_subnets) : k], each.key) 
-                                                                   #% length(data.aws_availability_zones.available.names) ]
-  availability_zone = "eu-west-3a"
+  availability_zone = local.azs[ index([for k in keys(local.ec2_subnets) : k], each.key) % length(local.azs) ]
 
   tags = merge(var.common_tags, {
     Name = "${each.key}"
+    Public = "FALSE"
+  })
+}
+
+# Creating private subnets resource for the DB instances 
+resource "aws_subnet" "private_db" {
+  for_each                = local.db_subnets
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = each.value.subnet_cidr_block
+  map_public_ip_on_launch = each.value.enable_public
+  availability_zone = local.azs[ index([for k in keys(local.db_subnets) : k], each.key) % length(local.azs) ]
+
+  tags = merge(var.common_tags, {
+    Name = "${each.key}"
+    Public = "FALSE"
   })
 }
 
@@ -76,8 +60,25 @@ resource "aws_internet_gateway" "gw" {
   vpc_id = aws_vpc.main.id
 
   tags = merge(var.common_tags, {
-    Name = "tf-aws-infra-project-gw"
+    Name = "${var.common_tags.Project}-gw"
   })
+}
+
+# Creating Elastic IP for the NAT gateway
+resource "aws_eip" "ip" {
+  domain = "vpc"
+  public_ipv4_pool = "amazon"
+}
+
+# Creating NAT gateway for internal components to reach internet 
+resource "aws_nat_gateway" "gw" {
+  availability_mode = "zonal"
+  allocation_id = aws_eip.ip.id
+  connectivity_type = "public"
+
+  subnet_id = aws_subnet.public[local.default_public_subnet].id
+
+  depends_on = [ aws_internet_gateway.gw ]
 }
 
 # Creating route to internet 
@@ -90,15 +91,35 @@ resource "aws_route_table" "default" {
   }
 
   tags = merge(var.common_tags, {
-    Name = "tf-aws-infra-project-route-table"
+    Name = "${var.common_tags.Project}-route-table"
   })
 }
 
 # Associate public subnet to the internet route
 resource "aws_route_table_association" "internet" {
-  for_each = local.public_subnets
+  for_each       = local.public_subnets
   subnet_id      = aws_subnet.public[each.key].id
   route_table_id = aws_route_table.default.id
+}
+
+# Creating route table for EC2 instances to NAT GW
+resource "aws_route_table" "nat" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.gw.id
+  }
+
+  tags = merge(var.common_tags, {
+    Name = "${var.common_tags.Project}-route-NAT-table"
+  })
+}
+
+resource "aws_route_table_association" "nat" {
+  for_each = local.ec2_subnets
+  subnet_id = aws_subnet.private_ec2[each.key].id
+  route_table_id = aws_route_table.nat.id  
 }
 
 # Creating security group to allow web traffic to web interfaces
@@ -112,7 +133,7 @@ resource "aws_security_group" "groups" {
   })
 }
 
-# Grabbing prefix list of AWS console for EC2 connect
+/* # Grabbing prefix list of AWS console for EC2 connect
 data "aws_ec2_managed_prefix_list" "console" {
   name = "com.amazonaws.eu-west-3.ec2-instance-connect"
 }
@@ -123,8 +144,7 @@ resource "aws_vpc_security_group_ingress_rule" "console" {
   security_group_id = aws_security_group.groups[each.key].id
   ip_protocol       = -1
   prefix_list_id    = data.aws_ec2_managed_prefix_list.console.id
-
-}
+} */
 
 # Creating ingress rules for all security groups 
 resource "aws_vpc_security_group_ingress_rule" "ingress" {

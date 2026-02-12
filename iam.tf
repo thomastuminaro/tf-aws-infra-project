@@ -1,15 +1,6 @@
-# Configuring IAM role, policy to allow EC2 instances to communicate with S3 bucket
-# As exercise will manually create policy even if s3 RO exists already
-
-/* resources :
-=> aws_iam_role
-=> aws_iam_instance_profile 
-=> aws_iam_policy
-=> aws_iam_role_policy_attachment  */
-
 # Creating the policy which allows S3 bucket access
 resource "aws_iam_policy" "ros3" {
-  name        = "tf-aws-infra-project-readonly-s3"
+  name        = "${var.common_tags.Project}-readonly-s3"
   path        = "/"
   description = "Policy to allow read-only access to S3 bucket from EC2 instances."
 
@@ -22,7 +13,7 @@ resource "aws_iam_policy" "ros3" {
           "s3:GetObjectVersion" # Retrieve specific version of object 
         ]
         Effect   = "Allow"
-        Resource = "${aws_s3_bucket.bucket.arn}/*" # check more dynamic way
+        Resource = "${aws_s3_bucket.bucket.arn}/*" 
       },
       {
         Action = [                # https://docs.aws.amazon.com/service-authorization/latest/reference/list_amazons3.html#amazons3-actions-as-permissions 
@@ -30,7 +21,7 @@ resource "aws_iam_policy" "ros3" {
           "s3:ListBucketVersions" # List versions of all objects in the bucket
         ]
         Effect   = "Allow"
-        Resource = "${aws_s3_bucket.bucket.arn}" # check more dynamic way
+        Resource = "${aws_s3_bucket.bucket.arn}" 
       }
     ]
   })
@@ -40,7 +31,7 @@ resource "aws_iam_policy" "ros3" {
 
 # Creating the role 
 resource "aws_iam_role" "ec2" {
-  name = "tf-aws-infra-project-ec2-role"
+  name = "${var.common_tags.Project}-ec2-role"
 
   assume_role_policy = jsonencode({
     Statement = [
@@ -64,6 +55,6 @@ resource "aws_iam_role_policy_attachment" "ec2" {
 
 # Creating the instance profile
 resource "aws_iam_instance_profile" "ec2" {
-  name = "tf-aws-infra-project-ec2-profile"
+  name = "${var.common_tags.Project}-ec2-profile"
   role = aws_iam_role.ec2.name
 }
