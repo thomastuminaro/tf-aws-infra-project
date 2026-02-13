@@ -8,11 +8,12 @@ locals {
   private_subnets = { for k, v in var.subnets : k => v if !v.enable_public }
 
   ec2_subnets = { for k, v in var.subnets : k => v if strcontains(k, "ec2") }
-  db_subnets = { for k, v in var.subnets : k => v if strcontains(k, "db") }
+  db_subnets  = { for k, v in var.subnets : k => v if strcontains(k, "db") }
 
   default_public_subnet = join(",", [for key, value in var.subnets : key if value.enable_public && value.is_default])
 
   ec2_sg = join(",", [for key, value in var.security_groups : key if strcontains(key, "ec2")])
+  db_sg  = join(",", [for key, value in var.security_groups : key if strcontains(key, "db")])
 
   sg_ingress_rules = flatten([
     for sg_name, sg_config in var.security_groups : [
@@ -40,7 +41,7 @@ locals {
   ##         EC2        ##
   ######################## 
 
-  azs = [ for sub in aws_subnet.public : sub.availability_zone ]
+  azs = [for sub in aws_subnet.public : sub.availability_zone]
 
   ########################
   ##                    ##

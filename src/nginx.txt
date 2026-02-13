@@ -1,0 +1,50 @@
+
+server {
+    listen 80;
+    server_name _;
+
+    root /var/www/html;
+    index index.php index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_pass unix:/var/run/php/php-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    }
+}
+
+
+{
+  "dbweb" = {
+    "arn" = "arn:aws:rds:eu-west-3:247625421810:subgrp:dbweb-subnet-group"
+    "description" = "Managed by Terraform"
+    "id" = "dbweb-subnet-group"
+    "name" = "dbweb-subnet-group"
+    "name_prefix" = ""
+    "region" = "eu-west-3"
+    "subnet_ids" = toset([
+      "subnet-081eb314fea53633a",
+      "subnet-0bec588fdd34b42cb",
+    ])
+    "supported_network_types" = toset([
+      "IPV4",
+    ])
+    "tags" = tomap({
+      "ManagedBy" = "Terraform"
+      "Name" = "tf-aws-infra-project-dbweb-subnet-group"
+      "Owner" = "Thomas Tuminaro"
+      "Project" = "tf-aws-infra-project"
+    })
+    "tags_all" = tomap({
+      "ManagedBy" = "Terraform"
+      "Name" = "tf-aws-infra-project-dbweb-subnet-group"
+      "Owner" = "Thomas Tuminaro"
+      "Project" = "tf-aws-infra-project"
+    })
+    "vpc_id" = "vpc-035587aaa0d665000"
+  }
+}

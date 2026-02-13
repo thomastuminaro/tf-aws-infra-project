@@ -38,8 +38,8 @@ resource "aws_instance" "servers" {
     name = aws_launch_template.server.name
   }
 
-  subnet_id = aws_subnet.private_ec2[each.value.ec2_subnet].id
-  vpc_security_group_ids = [ aws_security_group.groups[local.ec2_sg].id ]
+  subnet_id              = aws_subnet.private_ec2[each.value.ec2_subnet].id
+  vpc_security_group_ids = [aws_security_group.groups[local.ec2_sg].id]
 
   root_block_device {
     delete_on_termination = true
@@ -51,10 +51,10 @@ resource "aws_instance" "servers" {
     Name = "${each.key}"
   })
 
-  depends_on = [ aws_launch_template.server,
+  depends_on = [aws_launch_template.server,
     aws_vpc_security_group_egress_rule.egress,
     aws_vpc_security_group_ingress_rule.ingress,
     aws_s3_object.app,
-    aws_route_table_association.nat ]
+  aws_route_table_association.nat]
 }
 

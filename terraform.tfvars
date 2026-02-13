@@ -2,7 +2,7 @@ subnets = {
   "tf-aws-infra-project-subnet-public-1" = {
     subnet_cidr_block = "10.0.10.0/24"
     enable_public     = true
-    is_default = true
+    is_default        = true
   },
   "tf-aws-infra-project-subnet-public-2" = {
     subnet_cidr_block = "10.0.11.0/24"
@@ -16,8 +16,12 @@ subnets = {
     subnet_cidr_block = "10.0.21.0/24"
     enable_public     = false
   },
-  "tf-aws-infra-project-subnet-private-db" = {
+  "tf-aws-infra-project-subnet-private-db-1" = {
     subnet_cidr_block = "10.0.30.0/24"
+    enable_public     = false
+  },
+  "tf-aws-infra-project-subnet-private-db-2" = {
+    subnet_cidr_block = "10.0.31.0/24"
     enable_public     = false
   }
 }
@@ -84,5 +88,15 @@ ec2_instance = {
   "tf-aws-infra-project-server2" = {
     ec2_type   = "t3.micro"
     ec2_subnet = "tf-aws-infra-project-subnet-private-ec2-2"
+  }
+}
+
+db_instance = {
+  "dbweb" = {
+    db_storage  = 10
+    db_class    = "db.t4g.micro"
+    db_user     = "admin"
+    db_password = "adminadmin"
+    db_engine   = "mysql"
   }
 }

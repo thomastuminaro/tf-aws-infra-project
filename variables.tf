@@ -46,7 +46,7 @@ variable "subnets" {
   type = map(object({
     subnet_cidr_block = string
     enable_public     = bool
-    is_default = optional(bool, false)
+    is_default        = optional(bool, false)
   }))
 
   validation {
@@ -65,7 +65,7 @@ variable "subnets" {
   } */
 
   validation {
-    condition = length([ for sub in var.subnets : sub if sub.is_default && sub.enable_public ]) == 1
+    condition     = length([for sub in var.subnets : sub if sub.is_default && sub.enable_public]) == 1
     error_message = "Please use is_default flag for one public subnet."
   }
 
@@ -75,8 +75,13 @@ variable "subnets" {
   }
 
   validation {
-    condition     = length([for name, sub in var.subnets : name if strcontains(name, "ec2")]) >= 2 
+    condition     = length([for name, sub in var.subnets : name if strcontains(name, "ec2")]) >= 2
     error_message = "You need to configure at least two subnets for EC2 instances and include ec2 in the subnet names."
+  }
+
+  validation {
+    condition     = length([for name, sub in var.subnets : name if strcontains(name, "db")]) == 2
+    error_message = "Please configure two subnets for the database - the name must include db."
   }
 }
 
@@ -135,7 +140,7 @@ variable "security_groups" {
   }
 
   validation {
-    condition = length([ for name in keys(var.security_groups) : name if strcontains(name, "ec2") ]) == 1
+    condition     = length([for name in keys(var.security_groups) : name if strcontains(name, "ec2")]) == 1
     error_message = "The module only supports one security group for EC2 instances."
   }
 }
@@ -162,4 +167,38 @@ variable "ec2_instance" {
     ec2_type   = string
     ec2_subnet = string
   }))
+}
+
+########################
+##         DB         ##
+########################
+
+variable "db_instance" {
+  type = map(object({
+    db_storage  = number
+    db_engine   = string
+    db_class    = string
+    db_user     = string
+    db_password = string # will need to use secrets manager for this later on 
+  }))
+
+  validation {
+    condition     = alltrue([for db in var.db_instance : db.db_storage >= 5 && db.db_storage <= 10])
+    error_message = "Please configure DB in supported storage range, between 5G and 10G."
+  }
+
+  validation {
+    condition     = alltrue([for db in var.db_instance : db.db_class == "db.t3.micro" || db.db_class == "db.t4g.micro"])
+    error_message = "Only db.t3.micro or db.t4g.micro instance class are currently supported."
+  }
+
+  validation {
+    condition     = alltrue([for db in var.db_instance : db.db_engine == "mysql"])
+    error_message = "Only mysql engine is currently supported."
+  }
+
+  validation {
+    condition = alltrue([for name in keys(var.db_instance) : name == regex("^[a-z]*", name)])
+    error_message = "DB name must be only small letters."
+  }
 }

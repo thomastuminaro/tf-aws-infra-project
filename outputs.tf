@@ -1,4 +1,5 @@
 output "test" {
-  value = local.azs
+  value = aws_db_instance.db
+  sensitive = true
 }
  

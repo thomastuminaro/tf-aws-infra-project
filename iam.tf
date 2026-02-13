@@ -13,7 +13,7 @@ resource "aws_iam_policy" "ros3" {
           "s3:GetObjectVersion" # Retrieve specific version of object 
         ]
         Effect   = "Allow"
-        Resource = "${aws_s3_bucket.bucket.arn}/*" 
+        Resource = "${aws_s3_bucket.bucket.arn}/*"
       },
       {
         Action = [                # https://docs.aws.amazon.com/service-authorization/latest/reference/list_amazons3.html#amazons3-actions-as-permissions 
@@ -21,7 +21,7 @@ resource "aws_iam_policy" "ros3" {
           "s3:ListBucketVersions" # List versions of all objects in the bucket
         ]
         Effect   = "Allow"
-        Resource = "${aws_s3_bucket.bucket.arn}" 
+        Resource = "${aws_s3_bucket.bucket.arn}"
       }
     ]
   })
